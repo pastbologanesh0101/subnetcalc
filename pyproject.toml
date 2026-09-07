@@ -1,0 +1,29 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "subnetcalc"
+version = "0.1.0"
+description = "A tiny, dependency-free IPv4 subnet calculator CLI"
+readme = "README.md"
+requires-python = ">=3.8"
+license = { text = "MIT" }
+authors = [{ name = "pastbologanesh0101" }]
+keywords = ["ipv4", "subnet", "cidr", "networking", "cli"]
+classifiers = [
+    "Environment :: Console",
+    "Intended Audience :: System Administrators",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Topic :: System :: Networking",
+]
+
+[project.scripts]
+subnetcalc = "subnetcalc.cli:main"
+
+[project.urls]
+Repository = "https://github.com/pastbologanesh0101/subnetcalc"
+
+[tool.setuptools]
+packages = ["subnetcalc"]
