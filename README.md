@@ -1,7 +1,11 @@
 # subnetcalc
 
 A tiny IPv4 subnet calculator with **zero dependencies** — pure Python standard
-library. Give it a network in CIDR notation and it prints the network address,
+library.
+
+**Live web version:** <https://subnetcalc.vercel.app> (runs entirely client-side;
+source in [`web/`](web/))
+ Give it a network in CIDR notation and it prints the network address,
 broadcast, mask, wildcard, usable host range, and more. It can also carve a
 block into equal-size subnets or test whether an address belongs to a network.
 

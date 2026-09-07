@@ -1,0 +1,425 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>subnetcalc — IPv4 subnet calculator</title>
+<meta name="description" content="A tiny, dependency-free IPv4 subnet calculator. Enter a network in CIDR notation to see the network address, broadcast, mask, host range and more." />
+<style>
+  :root {
+    --bg: #0b0f14;
+    --panel: #111820;
+    --panel-2: #0e141b;
+    --border: #1e2a36;
+    --text: #d7e0ea;
+    --muted: #7d8ea0;
+    --accent: #4dd4b0;
+    --accent-dim: #2a6f5e;
+    --danger: #ff6b6b;
+    --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+  }
+  @media (prefers-color-scheme: light) {
+    :root {
+      --bg: #f5f7fa;
+      --panel: #ffffff;
+      --panel-2: #f0f3f7;
+      --border: #d9e0e8;
+      --text: #1b2430;
+      --muted: #5c6b7a;
+      --accent: #0d9276;
+      --accent-dim: #7fd4c1;
+      --danger: #c0392b;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font: 15px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 760px; margin: 0 auto; padding: 48px 20px 80px; }
+  header h1 {
+    font-family: var(--mono);
+    font-size: 22px;
+    margin: 0 0 4px;
+    letter-spacing: -0.5px;
+  }
+  header h1 .dot { color: var(--accent); }
+  header p { margin: 0 0 28px; color: var(--muted); font-size: 14px; }
+  header p a { color: var(--accent); text-decoration: none; }
+  header p a:hover { text-decoration: underline; }
+
+  form { display: flex; gap: 10px; flex-wrap: wrap; }
+  .field { flex: 1 1 320px; display: flex; flex-direction: column; gap: 6px; }
+  label { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.6px; }
+  input[type="text"], input[type="number"] {
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 15px;
+    padding: 11px 13px;
+    width: 100%;
+  }
+  input:focus { outline: 2px solid var(--accent-dim); outline-offset: 0; border-color: var(--accent); }
+  button {
+    background: var(--accent);
+    color: #06231c;
+    border: 0;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 14px;
+    padding: 11px 20px;
+    cursor: pointer;
+    align-self: flex-end;
+  }
+  button:hover { filter: brightness(1.08); }
+  button.secondary {
+    background: transparent;
+    color: var(--accent);
+    border: 1px solid var(--border);
+  }
+
+  .error {
+    margin-top: 18px;
+    padding: 12px 14px;
+    border: 1px solid var(--danger);
+    border-radius: 8px;
+    color: var(--danger);
+    font-family: var(--mono);
+    font-size: 13px;
+    background: color-mix(in srgb, var(--danger) 8%, transparent);
+  }
+
+  .card {
+    margin-top: 24px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+  .card h2 {
+    margin: 0;
+    padding: 14px 18px;
+    font-size: 12px;
+    letter-spacing: 0.7px;
+    text-transform: uppercase;
+    color: var(--muted);
+    border-bottom: 1px solid var(--border);
+    background: var(--panel-2);
+  }
+  .rows { display: grid; grid-template-columns: max-content 1fr; }
+  .rows > div {
+    padding: 9px 18px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+  }
+  .rows > div:nth-last-child(-n+2) { border-bottom: 0; }
+  .rows .k { color: var(--muted); font-size: 13px; }
+  .rows .v { font-family: var(--mono); font-size: 14px; }
+  .rows .v.badge-yes { color: var(--accent); }
+  .rows .v.badge-no { color: var(--muted); }
+
+  .split-controls { display: flex; gap: 10px; align-items: flex-end; padding: 16px 18px; flex-wrap: wrap; }
+  .split-controls .field { flex: 0 1 160px; }
+  .split-list { font-family: var(--mono); font-size: 13px; }
+  .split-list > div {
+    padding: 8px 18px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+    white-space: nowrap;
+    overflow-x: auto;
+  }
+  .split-list > div:last-child { border-bottom: 0; }
+  .split-list .cidr { color: var(--accent); }
+  .split-list .hosts { color: var(--muted); }
+
+  .contains-controls { display: flex; gap: 10px; align-items: flex-end; padding: 16px 18px; flex-wrap: wrap; }
+  .contains-result { padding: 0 18px 16px; font-family: var(--mono); font-size: 14px; }
+  .contains-result.hit { color: var(--accent); }
+  .contains-result.miss { color: var(--danger); }
+
+  footer { margin-top: 40px; color: var(--muted); font-size: 12px; font-family: var(--mono); }
+  footer a { color: var(--muted); }
+  .hidden { display: none !important; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>subnetcalc<span class="dot">.</span></h1>
+    <p>
+      IPv4 subnet calculator — no tracking, runs entirely in your browser.
+      <a href="https://github.com/pastbologanesh0101/subnetcalc" target="_blank" rel="noopener">Source &amp; CLI on GitHub →</a>
+    </p>
+  </header>
+
+  <form id="form" autocomplete="off">
+    <div class="field">
+      <label for="cidr">Network (CIDR or mask)</label>
+      <input type="text" id="cidr" name="cidr" placeholder="192.168.1.0/24" value="192.168.1.0/24" spellcheck="false" />
+    </div>
+    <button type="submit">Calculate</button>
+  </form>
+
+  <div id="error" class="error hidden"></div>
+
+  <div id="result" class="card hidden">
+    <h2>Overview</h2>
+    <div class="rows" id="rows"></div>
+  </div>
+
+  <div id="splitCard" class="card hidden">
+    <h2>Split into equal subnets</h2>
+    <div class="split-controls">
+      <div class="field">
+        <label for="splitN">Number of subnets</label>
+        <input type="number" id="splitN" min="1" value="4" />
+      </div>
+      <button type="button" class="secondary" id="splitBtn">Split</button>
+    </div>
+    <div class="split-list" id="splitList"></div>
+  </div>
+
+  <div id="containsCard" class="card hidden">
+    <h2>Address membership</h2>
+    <div class="contains-controls">
+      <div class="field" style="flex:1 1 260px;">
+        <label for="checkIp">IP address</label>
+        <input type="text" id="checkIp" placeholder="192.168.1.42" spellcheck="false" />
+      </div>
+      <button type="button" class="secondary" id="checkBtn">Check</button>
+    </div>
+    <div class="contains-result hidden" id="containsResult"></div>
+  </div>
+
+  <footer>
+    subnetcalc · MIT licensed · <a href="https://github.com/pastbologanesh0101/subnetcalc" target="_blank" rel="noopener">pastbologanesh0101/subnetcalc</a>
+  </footer>
+</div>
+
+<script>
+"use strict";
+
+var ALL_ONES = 0xFFFFFFFF;
+
+function ipToInt(ip) {
+  var parts = String(ip).trim().split(".");
+  if (parts.length !== 4) throw new Error("Invalid IPv4 address: " + ip);
+  var result = 0;
+  for (var i = 0; i < 4; i++) {
+    var part = parts[i];
+    if (!/^\d+$/.test(part) || (part.length > 1 && part[0] === "0")) {
+      throw new Error("Invalid IPv4 address: " + ip);
+    }
+    var value = Number(part);
+    if (value > 255) throw new Error("Octet out of range in " + ip + ": " + value);
+    result = result * 256 + value;
+  }
+  return result >>> 0;
+}
+
+function intToIp(value) {
+  value = value >>> 0;
+  return [24, 16, 8, 0].map(function (s) { return (value >>> s) & 0xFF; }).join(".");
+}
+
+function prefixFromNetmask(netmask) {
+  var bits = (ipToInt(netmask) >>> 0).toString(2).padStart(32, "0");
+  if (bits.indexOf("01") !== -1) throw new Error("Not a contiguous subnet mask: " + netmask);
+  return (bits.match(/1/g) || []).length;
+}
+
+function netmaskFromPrefix(prefix) {
+  if (prefix < 0 || prefix > 32) throw new Error("Prefix length out of range: " + prefix);
+  if (prefix === 0) return 0;
+  return (ALL_ONES << (32 - prefix)) >>> 0;
+}
+
+function ipv4Class(firstOctet) {
+  if (firstOctet < 128) return "A";
+  if (firstOctet < 192) return "B";
+  if (firstOctet < 224) return "C";
+  if (firstOctet < 240) return "D (multicast)";
+  return "E (reserved)";
+}
+
+function isPrivate(network) {
+  var ranges = [["10.0.0.0", 8], ["172.16.0.0", 12], ["192.168.0.0", 16]];
+  return ranges.some(function (r) {
+    return ((network & netmaskFromPrefix(r[1])) >>> 0) === ipToInt(r[0]);
+  });
+}
+
+function makeSubnet(address, prefix) {
+  var netmask = netmaskFromPrefix(prefix);
+  var wildcard = (~netmask) >>> 0;
+  var network = (address & netmask) >>> 0;
+  var broadcast = (network | wildcard) >>> 0;
+  var totalAddresses = Math.pow(2, 32 - prefix);
+  var pointToPoint = prefix >= 31;
+  return {
+    address: address,
+    prefix: prefix,
+    netmask: netmask,
+    wildcard: wildcard,
+    network: network,
+    broadcast: broadcast,
+    totalAddresses: totalAddresses,
+    usableHosts: pointToPoint ? 0 : totalAddresses - 2,
+    firstHost: pointToPoint ? network : network + 1,
+    lastHost: pointToPoint ? broadcast : broadcast - 1
+  };
+}
+
+function parseSubnet(spec) {
+  spec = String(spec).trim();
+  if (spec.indexOf("/") === -1) throw new Error("Expected CIDR notation like 10.0.0.0/24");
+  var idx = spec.indexOf("/");
+  var addrPart = spec.slice(0, idx);
+  var maskPart = spec.slice(idx + 1);
+  var address = ipToInt(addrPart);
+  var prefix;
+  if (maskPart.indexOf(".") !== -1) {
+    prefix = prefixFromNetmask(maskPart);
+  } else if (/^\d+$/.test(maskPart)) {
+    prefix = Number(maskPart);
+    if (prefix > 32) throw new Error("Prefix length out of range: " + prefix);
+  } else {
+    throw new Error("Invalid prefix length: " + maskPart);
+  }
+  return makeSubnet(address, prefix);
+}
+
+function splitSubnet(sub, count) {
+  count = Math.floor(count);
+  if (count < 1) throw new Error("Count must be >= 1");
+  var newPrefix = sub.prefix;
+  while (Math.pow(2, newPrefix - sub.prefix) < count) newPrefix++;
+  if (newPrefix > 32) throw new Error("Cannot split /" + sub.prefix + " into " + count + " subnets");
+  var step = Math.pow(2, 32 - newPrefix);
+  var pieces = Math.pow(2, newPrefix - sub.prefix);
+  if (pieces > 1024) throw new Error("That produces " + pieces + " subnets — cap is 1024.");
+  var out = [];
+  for (var i = 0; i < pieces; i++) out.push(makeSubnet(sub.network + i * step, newPrefix));
+  return out;
+}
+
+function contains(sub, ip) {
+  return ((ipToInt(ip) & sub.netmask) >>> 0) === sub.network;
+}
+
+// --- UI wiring ---
+
+var form = document.getElementById("form");
+var cidrInput = document.getElementById("cidr");
+var errorBox = document.getElementById("error");
+var resultCard = document.getElementById("result");
+var rowsEl = document.getElementById("rows");
+var splitCard = document.getElementById("splitCard");
+var splitList = document.getElementById("splitList");
+var splitBtn = document.getElementById("splitBtn");
+var splitN = document.getElementById("splitN");
+var containsCard = document.getElementById("containsCard");
+var checkIp = document.getElementById("checkIp");
+var checkBtn = document.getElementById("checkBtn");
+var containsResult = document.getElementById("containsResult");
+
+var current = null;
+
+function showError(msg) {
+  errorBox.textContent = msg;
+  errorBox.classList.remove("hidden");
+  resultCard.classList.add("hidden");
+  splitCard.classList.add("hidden");
+  containsCard.classList.add("hidden");
+}
+
+function row(k, v, cls) {
+  return '<div class="k">' + k + '</div><div class="v ' + (cls || "") + '">' + v + "</div>";
+}
+
+function render(sub) {
+  var firstOctet = (sub.network >>> 24) & 0xFF;
+  var priv = isPrivate(sub.network);
+  rowsEl.innerHTML =
+    row("CIDR", intToIp(sub.network) + "/" + sub.prefix) +
+    row("Network address", intToIp(sub.network)) +
+    row("Broadcast address", intToIp(sub.broadcast)) +
+    row("Subnet mask", intToIp(sub.netmask)) +
+    row("Wildcard mask", intToIp(sub.wildcard)) +
+    row("Host range", sub.usableHosts === 0
+        ? "—"
+        : intToIp(sub.firstHost) + "  –  " + intToIp(sub.lastHost)) +
+    row("Usable hosts", sub.usableHosts.toLocaleString()) +
+    row("Total addresses", sub.totalAddresses.toLocaleString()) +
+    row("Class", ipv4Class(firstOctet)) +
+    row("Private (RFC 1918)", priv ? "yes" : "no", priv ? "badge-yes" : "badge-no");
+  resultCard.classList.remove("hidden");
+  splitCard.classList.remove("hidden");
+  containsCard.classList.remove("hidden");
+  errorBox.classList.add("hidden");
+}
+
+function calculate() {
+  try {
+    current = parseSubnet(cidrInput.value);
+  } catch (e) {
+    current = null;
+    showError(e.message);
+    return;
+  }
+  render(current);
+  splitList.innerHTML = "";
+  containsResult.classList.add("hidden");
+}
+
+form.addEventListener("submit", function (e) {
+  e.preventDefault();
+  calculate();
+});
+
+splitBtn.addEventListener("click", function () {
+  if (!current) return;
+  try {
+    var pieces = splitSubnet(current, Number(splitN.value));
+    splitList.innerHTML = pieces.map(function (p) {
+      var range = p.usableHosts === 0
+        ? intToIp(p.network) + " – " + intToIp(p.broadcast)
+        : intToIp(p.firstHost) + " – " + intToIp(p.lastHost);
+      return '<div><span class="cidr">' + intToIp(p.network) + "/" + p.prefix +
+             '</span><span>' + range +
+             '</span><span class="hosts">' + p.usableHosts.toLocaleString() + " hosts</span></div>";
+    }).join("");
+  } catch (e) {
+    splitList.innerHTML = '<div style="color:var(--danger)">' + e.message + "</div>";
+  }
+});
+
+checkBtn.addEventListener("click", function () {
+  if (!current) return;
+  try {
+    var hit = contains(current, checkIp.value);
+    containsResult.textContent = checkIp.value.trim() + (hit ? "  ∈  " : "  ∉  ") +
+      intToIp(current.network) + "/" + current.prefix;
+    containsResult.className = "contains-result " + (hit ? "hit" : "miss");
+  } catch (e) {
+    containsResult.textContent = e.message;
+    containsResult.className = "contains-result miss";
+  }
+  containsResult.classList.remove("hidden");
+});
+
+checkIp.addEventListener("keydown", function (e) { if (e.key === "Enter") checkBtn.click(); });
+splitN.addEventListener("keydown", function (e) { if (e.key === "Enter") splitBtn.click(); });
+
+calculate();
+</script>
+</body>
+</html>
